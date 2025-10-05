@@ -5,26 +5,34 @@ class Bid {
   final double amount;
   final DateTime time;
 
-  Bid({required this.bidder, required this.amount, DateTime? time}) : time = time ?? DateTime.now();
+  Bid({
+    required this.bidder,
+    required this.amount,
+    DateTime? time,
+  }) : time = time ?? DateTime.now();
 }
 
 class Auction {
   final String id;
   final String title;
   final String description;
-  final String? imageUrl;
+  final List<String> imageUrls; // 🔥 plusieurs images possibles
   final DateTime endTime;
   final double startingPrice;
   double currentPrice;
   final List<Bid> bids;
+  final String creator;
+  final String category;
 
   Auction({
     required this.id,
     required this.title,
     required this.description,
-    this.imageUrl,
+    this.imageUrls = const [], // par défaut vide
     required this.endTime,
     required this.startingPrice,
+    this.creator = 'Anonyme',
+    this.category = 'Autre',
     double? currentPrice,
     List<Bid>? bids,
   })  : currentPrice = currentPrice ?? startingPrice,

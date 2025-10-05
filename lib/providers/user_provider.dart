@@ -7,7 +7,6 @@ class UserProvider with ChangeNotifier {
   User? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
 
-  /// Nouvelle méthode login qui crée un User à partir de pseudo + email
   void login(String pseudo, String email) {
     _currentUser = User(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -24,7 +23,14 @@ class UserProvider with ChangeNotifier {
 
   void updatePseudo(String newPseudo) {
     if (_currentUser != null) {
-      _currentUser!.pseudo = newPseudo;
+      _currentUser = _currentUser!.copyWith(pseudo: newPseudo);
+      notifyListeners();
+    }
+  }
+
+  void updatePassword(String newPassword) {
+    if (_currentUser != null) {
+      _currentUser = _currentUser!.copyWith(password: newPassword);
       notifyListeners();
     }
   }
@@ -36,6 +42,29 @@ class UserProvider with ChangeNotifier {
 
   void addOffer(String offerId) {
     _currentUser?.myOffers.add(offerId);
+    notifyListeners();
+  }
+
+  void loginWithEmail({required String email, required String password}) {
+    _currentUser = User(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      email: email,
+      password: password,
+      pseudo: email.split('@')[0],
+      myAuctions: [],
+      myOffers: [],
+    );
+    notifyListeners();
+  }
+
+  void loginWithGoogle() {
+    _currentUser = User(
+      id: "google_${DateTime.now().millisecondsSinceEpoch}",
+      email: "user@gmail.com",
+      pseudo: "GoogleUser",
+      myAuctions: [],
+      myOffers: [],
+    );
     notifyListeners();
   }
 }

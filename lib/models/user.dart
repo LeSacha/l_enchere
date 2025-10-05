@@ -1,37 +1,39 @@
 class User {
-  final String id;
+  String id;
   String pseudo;
   String email;
+  String? password; // 🔑 on ajoute le mot de passe
   String? avatarUrl;
-  List<String> myAuctions; // ids des annonces créées
-  List<String> myOffers;   // ids des offres faites
+  List<String> myAuctions;
+  List<String> myOffers;
 
   User({
     required this.id,
     required this.pseudo,
     required this.email,
+    this.password,
     this.avatarUrl,
     List<String>? myAuctions,
     List<String>? myOffers,
   })  : myAuctions = myAuctions ?? [],
         myOffers = myOffers ?? [];
 
-  // Exemple de méthode pour convertir en JSON si plus tard API
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'pseudo': pseudo,
-        'email': email,
-        'avatarUrl': avatarUrl,
-        'myAuctions': myAuctions,
-        'myOffers': myOffers,
-      };
-
-  factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'],
-        pseudo: json['pseudo'],
-        email: json['email'],
-        avatarUrl: json['avatarUrl'],
-        myAuctions: List<String>.from(json['myAuctions'] ?? []),
-        myOffers: List<String>.from(json['myOffers'] ?? []),
-      );
+  User copyWith({
+    String? pseudo,
+    String? email,
+    String? password,
+    String? avatarUrl,
+    List<String>? myAuctions,
+    List<String>? myOffers,
+  }) {
+    return User(
+      id: id,
+      pseudo: pseudo ?? this.pseudo,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      myAuctions: myAuctions ?? this.myAuctions,
+      myOffers: myOffers ?? this.myOffers,
+    );
+  }
 }

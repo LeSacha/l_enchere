@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Cette application a besoin d'accéder à l'appareil photo pour permettre l'ajout de photos aux annonces.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application a besoin d'accéder à votre galerie pour sélectionner des photos pour vos annonces.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Cette application doit pouvoir enregistrer des photos dans votre galerie.</string>
 </dict>
 </plist>

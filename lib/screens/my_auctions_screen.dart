@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 import '../providers/auction_provider.dart';
 import '../widgets/auction_card.dart';
+import '../screens/auction-detail_screen.dart';
 import '../widgets/custom_navbar.dart';
 
 class MyAuctionsScreen extends StatelessWidget {
@@ -9,8 +11,12 @@ class MyAuctionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<AuctionProvider>(context);
-    final myAuctions = provider.auctions.where((a) => a.id.startsWith("user-")).toList();
+    final user = Provider.of<UserProvider>(context).currentUser;
+    final allAuctions = Provider.of<AuctionProvider>(context).auctions;
+
+    final myAuctions = (user == null)
+        ? <dynamic>[]
+        : allAuctions.where((a) => user.myAuctions.contains(a.id)).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text("Mes annonces")),
@@ -18,7 +24,19 @@ class MyAuctionsScreen extends StatelessWidget {
           ? const Center(child: Text("Vous n'avez pas encore créé d'annonces"))
           : ListView.builder(
               itemCount: myAuctions.length,
-              itemBuilder: (context, i) => AuctionCard(auction: myAuctions[i], onTap: () {  },),
+              itemBuilder: (context, i) {
+                final a = myAuctions[i];
+                return AuctionCard(
+                  auction: a,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AuctionDetailScreen(auction: a),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
       bottomNavigationBar: const CustomNavBar(),
     );

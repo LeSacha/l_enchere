@@ -12,16 +12,27 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _pseudoCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
 
   void _login() {
     if (!_formKey.currentState!.validate()) return;
 
-    Provider.of<UserProvider>(
+    // ⚠️ Ici tu pourrais appeler une API pour vérifier le compte
+    Provider.of<UserProvider>(context, listen: false).loginWithEmail(
+      email: _emailCtrl.text.trim(),
+      password: _passwordCtrl.text.trim(),
+    );
+
+    Navigator.pushReplacement(
       context,
-      listen: false,
-    ).login(_pseudoCtrl.text.trim(), _emailCtrl.text.trim());
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
+  }
+
+  void _googleLogin() {
+    // Simule une connexion Google
+    Provider.of<UserProvider>(context, listen: false).loginWithGoogle();
 
     Navigator.pushReplacement(
       context,
@@ -40,26 +51,62 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              TextFormField(
-                controller: _pseudoCtrl,
-                decoration: const InputDecoration(labelText: 'Pseudo'),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Pseudo requis' : null,
+              const Text(
+                "Bienvenue sur L'Enchère",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Email requis';
                   if (!v.contains('@')) return 'Email invalide';
                   return null;
                 },
               ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _passwordCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mot de passe',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Mot de passe requis';
+                  if (v.length < 6) return 'Minimum 6 caractères';
+                  return null;
+                },
+              ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _login,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
                 child: const Text("Se connecter"),
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _googleLogin,
+                icon: Image.network(
+                  'https://upload.wikimedia.org/wikipedia/commons/0/09/IOS_Google_icon.png',
+                  height: 20,
+                  width: 20,
+                ),
+                label: const Text("Connexion avec Google"),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                ),
               ),
             ],
           ),

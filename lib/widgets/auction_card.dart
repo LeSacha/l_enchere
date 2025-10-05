@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/auction.dart';
 import '../utils/time_utils.dart';
+import 'dart:io';
 
 class AuctionCard extends StatelessWidget {
   final Auction auction;
   final VoidCallback onTap;
 
   const AuctionCard({Key? key, required this.auction, required this.onTap})
-    : super(key: key);
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +27,6 @@ class AuctionCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            // léger glow si bientôt fini
             boxShadow: isEndingSoon
                 ? [
                     BoxShadow(
@@ -43,13 +43,27 @@ class AuctionCard extends StatelessWidget {
                 tag: auction.id,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    auction.imageUrl ??
-                        'https://picsum.photos/seed/${auction.id}/200/140',
-                    width: 100,
-                    height: 70,
-                    fit: BoxFit.cover,
-                  ),
+                  child: auction.imageUrls.isNotEmpty
+                      ? (auction.imageUrls.first.startsWith('http')
+                          ? Image.network(
+                              auction.imageUrls.first,
+                              width: 100,
+                              height: 70,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.file(
+                              File(auction.imageUrls.first),
+                              width: 100,
+                              height: 70,
+                              fit: BoxFit.cover,
+                            ))
+                      : Image.network(
+                          // 🔥 bien vérifier que c'est "picsum" et pas "piscum"
+                          'https://picsum.photos/seed/${auction.id}/200/140',
+                          width: 100,
+                          height: 70,
+                          fit: BoxFit.cover,
+                        ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -84,8 +98,8 @@ class AuctionCard extends StatelessWidget {
                               color: auction.isExpired
                                   ? Colors.grey
                                   : (isEndingSoon
-                                        ? Colors.red
-                                        : Colors.black87),
+                                      ? Colors.red
+                                      : Colors.black87),
                               fontWeight: FontWeight.w600,
                             ),
                           ),

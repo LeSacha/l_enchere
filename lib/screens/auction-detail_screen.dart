@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:l_enchere/widgets/full_screen_gallery.dart';
 import 'package:provider/provider.dart';
 import '../models/auction.dart';
 import '../providers/auction_provider.dart';
+import '../providers/user_provider.dart';
 import '../utils/time_utils.dart';
+import 'dart:io';
 
 class AuctionDetailScreen extends StatefulWidget {
   static const routeName = '/detail';
@@ -26,14 +29,54 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
     super.dispose();
   }
 
+  void _placeBid(Auction a) {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final currentUser = userProvider.currentUser;
+
+    final amount = double.tryParse(_bidCtrl.text.replaceAll(',', '.')) ?? -1;
+
+    // Si user connecté, prend son pseudo automatiquement, sinon garde champ manuel
+    final bidder = currentUser != null
+        ? currentUser.pseudo
+        : (_nameCtrl.text.trim().isEmpty ? 'Anonyme' : _nameCtrl.text.trim());
+
+    final result = Provider.of<AuctionProvider>(
+      context,
+      listen: false,
+    ).placeBid(auctionId: a.id, amount: amount, bidder: bidder);
+
+    if (result == 'ok') {
+      _bidCtrl.clear();
+
+      // 🔑 Ajoute l'ID de l'enchère dans la liste des offres de l'utilisateur
+      if (currentUser != null) {
+        userProvider.addOffer(a.id);
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enchère enregistrée')));
+    } else {
+      String msg = 'Erreur';
+      if (result == 'prix_trop_bas') {
+        msg = 'Le montant doit être supérieur au prix courant';
+      }
+      if (result == 'enchere_terminee') {
+        msg = 'Enchère déjà terminée';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final priceFmt = NumberFormat.simpleCurrency(locale: 'fr_FR');
+    final currentUser = Provider.of<UserProvider>(context).currentUser;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Détail')),
       body: Consumer<AuctionProvider>(
         builder: (context, prov, _) {
-          // récupère l'objet récent (référence)
           final a = prov.auctions.firstWhere(
             (e) => e.id == widget.auction.id,
             orElse: () => widget.auction,
@@ -46,13 +89,46 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                 tag: a.id,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    a.imageUrl ?? 'https://picsum.photos/seed/${a.id}/800/400',
+                  child: SizedBox(
                     height: 220,
-                    fit: BoxFit.cover,
+                    child: PageView.builder(
+                      itemCount: a.imageUrls.isNotEmpty
+                          ? a.imageUrls.length
+                          : 1,
+                      itemBuilder: (context, index) {
+                        final url = a.imageUrls.isNotEmpty
+                            ? a.imageUrls[index]
+                            : null;
+                        final imageWidget = url != null
+                            ? (url.startsWith('http')
+                                  ? Image.network(url, fit: BoxFit.cover)
+                                  : Image.file(File(url), fit: BoxFit.cover))
+                            : Image.network(
+                                'https://picsum.photos/seed/${a.id}/800/400',
+                                fit: BoxFit.cover,
+                              );
+
+                        // 👉 On enveloppe avec GestureDetector pour ouvrir en plein écran
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => FullScreenGallery(
+                                  images: a.imageUrls,
+                                  initialIndex: index,
+                                ),
+                              ),
+                            );
+                          },
+                          child: imageWidget,
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 12),
               Text(a.title, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
@@ -75,6 +151,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+
               if (a.isExpired)
                 const Center(
                   child: Text(
@@ -85,15 +162,20 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                     ),
                   ),
                 ),
+
               if (!a.isExpired) ...[
-                TextField(
-                  controller: _nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Ton pseudo'),
-                ),
+                // Si utilisateur connecté, on cache le champ "pseudo"
+                if (currentUser == null)
+                  TextField(
+                    controller: _nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Ton pseudo'),
+                  ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _bidCtrl,
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: InputDecoration(
                     labelText:
                         'Montant (EUR) — min: ${priceFmt.format(a.currentPrice + 0.01)}',
@@ -101,36 +183,11 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: () {
-                    final amount =
-                        double.tryParse(_bidCtrl.text.replaceAll(',', '.')) ??
-                        -1;
-                    final pseudo = _nameCtrl.text.trim().isEmpty
-                        ? 'Anonyme'
-                        : _nameCtrl.text.trim();
-                    final result = Provider.of<AuctionProvider>(
-                      context,
-                      listen: false,
-                    ).placeBid(auctionId: a.id, amount: amount, bidder: pseudo);
-                    if (result == 'ok') {
-                      _bidCtrl.clear();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Enchère enregistrée')),
-                      );
-                    } else {
-                      String msg = 'Erreur';
-                      if (result == 'prix_trop_bas')
-                        msg = 'Le montant doit être supérieur au prix courant';
-                      if (result == 'enchere_terminee')
-                        msg = 'Enchère déjà terminée';
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(msg)));
-                    }
-                  },
+                  onPressed: () => _placeBid(a),
                   child: const Text('Enchérir'),
                 ),
               ],
+
               const SizedBox(height: 20),
               const Text(
                 'Historique des offres',
@@ -143,9 +200,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                 ...a.bids.map(
                   (b) => ListTile(
                     dense: true,
-                    title: Text(
-                      '${b.bidder} — ${NumberFormat.simpleCurrency(locale: 'fr_FR').format(b.amount)}',
-                    ),
+                    title: Text('${b.bidder} — ${priceFmt.format(b.amount)}'),
                     subtitle: Text('${b.time}'),
                   ),
                 ),
