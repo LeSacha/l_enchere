@@ -9,7 +9,7 @@ class AuctionCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const AuctionCard({Key? key, required this.auction, required this.onTap})
-      : super(key: key);
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -45,24 +45,26 @@ class AuctionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                   child: auction.imageUrls.isNotEmpty
                       ? (auction.imageUrls.first.startsWith('http')
-                          ? Image.network(
-                              auction.imageUrls.first,
-                              width: 100,
-                              height: 70,
-                              fit: BoxFit.cover,
-                            )
-                          : Image.file(
-                              File(auction.imageUrls.first),
-                              width: 100,
-                              height: 70,
-                              fit: BoxFit.cover,
-                            ))
+                            ? Image.network(
+                                auction.imageUrls.first,
+                                width: 150,
+                                height: 120,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center, // ✅ centrage
+                              )
+                            : Image.file(
+                                File(auction.imageUrls.first),
+                                width: 150,
+                                height: 120,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center, // ✅ centrage
+                              ))
                       : Image.network(
-                          // 🔥 bien vérifier que c'est "picsum" et pas "piscum"
                           'https://picsum.photos/seed/${auction.id}/200/140',
-                          width: 100,
-                          height: 70,
+                          width: 150,
+                          height: 120,
                           fit: BoxFit.cover,
+                          alignment: Alignment.center, // ✅ centrage
                         ),
                 ),
               ),
@@ -98,8 +100,8 @@ class AuctionCard extends StatelessWidget {
                               color: auction.isExpired
                                   ? Colors.grey
                                   : (isEndingSoon
-                                      ? Colors.red
-                                      : Colors.black87),
+                                        ? Colors.red
+                                        : Colors.black87),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
