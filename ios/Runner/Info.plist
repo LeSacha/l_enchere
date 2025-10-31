@@ -51,5 +51,19 @@
 	<string>Cette application a besoin d'accéder à votre galerie pour sélectionner des photos pour vos annonces.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Cette application doit pouvoir enregistrer des photos dans votre galerie.</string>
+
+	<!-- ✅ Google Sign-In Configuration -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1009387266176-odac5bm87v5m5ls0dlr9cur28gumijv7</string>
+			</array>
+		</dict>
+	</array>
+
 </dict>
 </plist>

@@ -25,7 +25,7 @@ class AuctionProvider extends ChangeNotifier {
         id: u.v4(),
         title: 'Vieux vélo vintage',
         description: 'Bon état — idéal pour balades urbaines',
-        imageUrls:['https://picsum.photos/seed/bike/800/600'],
+        imageUrls: ['https://picsum.photos/seed/bike/800/600'],
         endTime: now.add(const Duration(hours: 12)),
         startingPrice: 20.0,
         creator: 'Admin',
@@ -34,7 +34,10 @@ class AuctionProvider extends ChangeNotifier {
         id: u.v4(),
         title: 'Lampe industrielle',
         description: 'Design rétro — ampoule fournie',
-        imageUrls: ['https://picsum.photos/seed/lamp/800/600', 'https://picsum.photos/seed/bike/800/600'],
+        imageUrls: [
+          'https://picsum.photos/seed/lamp/800/600',
+          'https://picsum.photos/seed/bike/800/600',
+        ],
         endTime: now.add(const Duration(hours: 36)),
         startingPrice: 15.0,
         creator: 'Admin',
@@ -63,6 +66,13 @@ class AuctionProvider extends ChangeNotifier {
     a.bids.insert(0, Bid(bidder: bidder, amount: amount));
     notifyListeners();
     return 'ok';
+  }
+
+  /// ✅ Nouvelle méthode : rafraîchit la liste d’enchères
+  void refreshAuctions() {
+    // Ici, tu pourrais recharger depuis une API ou base locale
+    // Pour l’instant, on se contente d’un simple notifyListeners()
+    notifyListeners();
   }
 
   @override

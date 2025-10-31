@@ -5,14 +5,16 @@ import '../providers/nav_provider.dart';
 import '../screens/my_auctions_screen.dart';
 import '../screens/my_offers_screen.dart';
 import '../widgets/custom_navbar.dart';
+import 'login_screen.dart'; // Importez votre écran de login
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
   void _editPseudo(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final user = userProvider.currentUser;
     final TextEditingController pseudoCtrl = TextEditingController(
-      text: userProvider.currentUser?.pseudo ?? "",
+      text: user?['pseudo'] ?? "",
     );
 
     showDialog(
@@ -32,11 +34,33 @@ class ProfileScreen extends StatelessWidget {
             child: const Text("Annuler"),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (pseudoCtrl.text.trim().isNotEmpty) {
-                userProvider.updatePseudo(pseudoCtrl.text.trim());
+                try {
+                  await userProvider.updatePseudo(pseudoCtrl.text.trim());
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Pseudo mis à jour avec succès"),
+                    ),
+                  );
+                  Navigator.pop(ctx); // Ferme la fenêtre après succès
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Erreur: ${e.toString()}"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  // Ne pas fermer la fenêtre en cas d'erreur
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Le pseudo ne peut pas être vide"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
-              Navigator.pop(ctx);
             },
             child: const Text("Enregistrer"),
           ),
@@ -47,7 +71,8 @@ class ProfileScreen extends StatelessWidget {
 
   void _editPassword(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final TextEditingController passCtrl = TextEditingController();
+    final TextEditingController oldPassCtrl = TextEditingController();
+    final TextEditingController newPassCtrl = TextEditingController();
     final TextEditingController confirmCtrl = TextEditingController();
 
     showDialog(
@@ -58,7 +83,16 @@ class ProfileScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: passCtrl,
+              controller: oldPassCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: "Ancien mot de passe",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: newPassCtrl,
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: "Nouveau mot de passe",
@@ -82,15 +116,44 @@ class ProfileScreen extends StatelessWidget {
             child: const Text("Annuler"),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (passCtrl.text == confirmCtrl.text &&
-                  passCtrl.text.trim().isNotEmpty) {
-                userProvider.updatePassword(passCtrl.text.trim());
-                Navigator.pop(ctx);
-              } else {
+            onPressed: () async {
+              final oldPass = oldPassCtrl.text.trim();
+              final newPass = newPassCtrl.text.trim();
+              final confirmPass = confirmCtrl.text.trim();
+
+              if (newPass.isEmpty || oldPass.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Veuillez remplir tous les champs"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              if (newPass != confirmPass) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text("Les mots de passe ne correspondent pas"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              try {
+                await userProvider.updatePassword(oldPass, newPass);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Mot de passe mis à jour avec succès"),
+                  ),
+                );
+                Navigator.pop(ctx);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Erreur : ${e.toString()}"),
+                    backgroundColor: Colors.red,
                   ),
                 );
               }
@@ -119,22 +182,25 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 40,
-                    backgroundImage: user.avatarUrl != null
-                        ? NetworkImage(user.avatarUrl!)
+                    backgroundImage: user['avatarUrl'] != null
+                        ? NetworkImage(user['avatarUrl']!)
                         : null,
-                    child: user.avatarUrl == null
+                    child: user['avatarUrl'] == null
                         ? const Icon(Icons.person, size: 40)
                         : null,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user.pseudo,
+                    user['pseudo'] ?? 'Utilisateur',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(user.email, style: const TextStyle(color: Colors.grey)),
+                  Text(
+                    user['email'] ?? '',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
                   const SizedBox(height: 10),
 
                   ElevatedButton.icon(
@@ -152,7 +218,9 @@ class ProfileScreen extends StatelessWidget {
 
                   ListTile(
                     leading: const Icon(Icons.list_alt),
-                    title: Text("Mes annonces (${user.myAuctions.length})"),
+                    title: Text(
+                      "Mes annonces (${(user['myAuctions'] as List?)?.length ?? 0})",
+                    ),
                     onTap: () {
                       navProvider.setIndex(1);
                       Navigator.of(context).pushReplacement(
@@ -164,7 +232,9 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   ListTile(
                     leading: const Icon(Icons.local_offer),
-                    title: Text("Mes offres (${user.myOffers.length})"),
+                    title: Text(
+                      "Mes offres (${(user['myOffers'] as List?)?.length ?? 0})",
+                    ),
                     onTap: () {
                       navProvider.setIndex(2);
                       Navigator.of(context).pushReplacement(
@@ -177,7 +247,27 @@ class ProfileScreen extends StatelessWidget {
 
                   const Spacer(),
                   ElevatedButton.icon(
-                    onPressed: () => userProvider.logout(),
+                    onPressed: () async {
+                      try {
+                        await userProvider.logout();
+                        // Navigation directe vers l'écran de login
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                          (route) => false,
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              "Erreur lors de la déconnexion: ${e.toString()}",
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
                     icon: const Icon(Icons.logout),
                     label: const Text("Se déconnecter"),
                   ),

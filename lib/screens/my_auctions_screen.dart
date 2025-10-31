@@ -11,12 +11,16 @@ class MyAuctionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<UserProvider>(context).currentUser;
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.currentUser;
     final allAuctions = Provider.of<AuctionProvider>(context).auctions;
 
-    final myAuctions = (user == null)
-        ? <dynamic>[]
-        : allAuctions.where((a) => user.myAuctions.contains(a.id)).toList();
+    // Si pas d'objet utilisateur ne contient pas "myAuctions", on gère le cas vide
+    final myAuctionIds = (user?["myAuctions"] as List?) ?? [];
+
+    final myAuctions = allAuctions
+        .where((a) => myAuctionIds.contains(a.id))
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text("Mes annonces")),

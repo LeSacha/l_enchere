@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../providers/user_provider.dart';
 import '../providers/auction_provider.dart';
 import '../screens/auction-detail_screen.dart';
 import '../widgets/custom_navbar.dart';
-import 'package:intl/intl.dart';
 
 class MyOffersScreen extends StatelessWidget {
   const MyOffersScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<UserProvider>(context).currentUser;
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.currentUser;
     final allAuctions = Provider.of<AuctionProvider>(context).auctions;
     final currency = NumberFormat.simpleCurrency(locale: 'fr_FR');
 
@@ -23,9 +24,16 @@ class MyOffersScreen extends StatelessWidget {
       );
     }
 
+    // Récupération sûre des IDs d’enchères sur lesquelles l’utilisateur a fait des offres
+    final myOffersIds = (user["myOffers"] as List?) ?? [];
+
+    // Filtrer les enchères correspondantes
     final myOfferAuctionList = allAuctions
-        .where((a) => user.myOffers.contains(a.id))
+        .where((a) => myOffersIds.contains(a.id))
         .toList();
+
+    // Récupération du pseudo (ou fallback "Anonyme")
+    final pseudo = user["pseudo"] ?? "Anonyme";
 
     return Scaffold(
       appBar: AppBar(title: const Text("Mes offres")),
@@ -35,10 +43,9 @@ class MyOffersScreen extends StatelessWidget {
               itemCount: myOfferAuctionList.length,
               itemBuilder: (context, i) {
                 final a = myOfferAuctionList[i];
-                // Cherche la (ou les) offres du user sur cette enchère — on prend la première trouvée (la plus récente si la liste de bids est inversée)
-                final myBids = a.bids
-                    .where((b) => b.bidder == user.pseudo)
-                    .toList();
+
+                // On cherche la dernière offre faite par l’utilisateur sur cette enchère
+                final myBids = a.bids.where((b) => b.bidder == pseudo).toList();
                 final myLastBid = myBids.isNotEmpty
                     ? myBids.first.amount
                     : null;
@@ -55,7 +62,7 @@ class MyOffersScreen extends StatelessWidget {
                   title: Text(a.title),
                   subtitle: Text(
                     myLastBid != null
-                        ? 'Votre offre: ${currency.format(myLastBid)}'
+                        ? 'Votre offre : ${currency.format(myLastBid)}'
                         : 'Vous avez fait une offre',
                   ),
                   trailing: Text(currency.format(a.currentPrice)),

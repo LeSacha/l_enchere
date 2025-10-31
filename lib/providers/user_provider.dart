@@ -1,70 +1,200 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../models/user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 
 class UserProvider with ChangeNotifier {
-  User? _currentUser;
+  String? token;
+  String? refreshToken;
+  Map<String, dynamic>? user;
 
-  User? get currentUser => _currentUser;
-  bool get isLoggedIn => _currentUser != null;
+  /// --- Connexion par email ---
+  Future<void> loginWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final data = await AuthService.login(email, password);
 
-  void login(String pseudo, String email) {
-    _currentUser = User(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      pseudo: pseudo,
-      email: email,
-    );
+      token = data["accessToken"];
+      refreshToken = data["refreshToken"];
+      user = data["user"];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("token", token!);
+      await prefs.setString("refreshToken", refreshToken!);
+      await prefs.setString("user", jsonEncode(user));
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint("❌ Erreur de connexion : $e");
+      rethrow;
+    }
+  }
+
+  /// --- Déconnexion ---
+  Future<void> logout() async {
+    if (token != null && user != null && user!['id'] != null) {
+      try {
+        await AuthService.logout(user!['id'], token!);
+      } catch (e) {
+        debugPrint("⚠️ Erreur lors de la déconnexion API: $e");
+      }
+    }
+
+    token = null;
+    refreshToken = null;
+    user = null;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("token");
+    await prefs.remove("refreshToken");
+    await prefs.remove("user");
+
     notifyListeners();
   }
 
-  void logout() {
-    _currentUser = null;
-    notifyListeners();
-  }
+  /// --- Chargement du user depuis le stockage local ---
+  Future<void> loadUserFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedToken = prefs.getString("token");
+    final storedRefreshToken = prefs.getString("refreshToken");
+    final storedUser = prefs.getString("user");
 
-  void updatePseudo(String newPseudo) {
-    if (_currentUser != null) {
-      _currentUser = _currentUser!.copyWith(pseudo: newPseudo);
+    if (storedToken != null && storedUser != null) {
+      token = storedToken;
+      refreshToken = storedRefreshToken;
+      user = jsonDecode(storedUser);
       notifyListeners();
     }
   }
 
-  void updatePassword(String newPassword) {
-    if (_currentUser != null) {
-      _currentUser = _currentUser!.copyWith(password: newPassword);
+  bool get isLoggedIn => token != null && user != null;
+
+  /// --- Ajout d'une enchère liée à l'utilisateur ---
+  void addUserAuction(String auctionId) {
+    if (user != null) {
+      user!['myAuctions'] ??= [];
+      user!['myAuctions'].add(auctionId);
+      _saveUserToStorage();
       notifyListeners();
     }
   }
 
-  void addAuction(String auctionId) {
-    _currentUser?.myAuctions.add(auctionId);
-    notifyListeners();
+  /// --- Ajout d'une offre liée à l'utilisateur ---
+  void addUserOffer(String offerId) {
+    if (user != null) {
+      user!['myOffers'] ??= [];
+      user!['myOffers'].add(offerId);
+      _saveUserToStorage();
+      notifyListeners();
+    }
   }
 
-  void addOffer(String offerId) {
-    _currentUser?.myOffers.add(offerId);
-    notifyListeners();
+  Map<String, dynamic>? get currentUser => user;
+
+  /// --- Mise à jour du pseudo ---
+  Future<void> updatePseudo(String newPseudo) async {
+    if (user != null && token != null) {
+      try {
+        final response = await AuthService.updatePseudo(
+          token: token!,
+          newPseudo: newPseudo,
+        );
+
+        if (response['user'] != null) {
+          user = response['user'];
+          await _saveUserToStorage();
+          notifyListeners();
+          debugPrint("✅ Pseudo mis à jour : $newPseudo");
+        } else {
+          throw Exception("Réponse invalide du serveur");
+        }
+      } catch (e) {
+        debugPrint("❌ Erreur updatePseudo: $e");
+        final msg = e.toString().contains('déjà utilisé')
+            ? 'Ce pseudo est déjà utilisé'
+            : 'Erreur lors de la mise à jour du pseudo';
+        throw Exception(msg);
+      }
+    } else {
+      throw Exception('Utilisateur non connecté');
+    }
   }
 
-  void loginWithEmail({required String email, required String password}) {
-    _currentUser = User(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      email: email,
-      password: password,
-      pseudo: email.split('@')[0],
-      myAuctions: [],
-      myOffers: [],
-    );
-    notifyListeners();
+  /// ✅ --- Mise à jour du mot de passe (avec ancien mot de passe) ---
+  Future<void> updatePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    if (token != null) {
+      try {
+        await AuthService.updatePassword(
+          token: token!,
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+        debugPrint("✅ Mot de passe mis à jour avec succès");
+      } catch (e) {
+        debugPrint("❌ Erreur lors de la mise à jour du mot de passe : $e");
+        rethrow;
+      }
+    } else {
+      throw Exception('Utilisateur non connecté');
+    }
   }
 
-  void loginWithGoogle() {
-    _currentUser = User(
-      id: "google_${DateTime.now().millisecondsSinceEpoch}",
-      email: "user@gmail.com",
-      pseudo: "GoogleUser",
-      myAuctions: [],
-      myOffers: [],
-    );
-    notifyListeners();
+  Future<void> _saveUserToStorage() async {
+    if (user != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("user", jsonEncode(user));
+    }
+  }
+
+  String? get authorizationToken => token;
+
+  /// --- Connexion via Google (stub pour garder la compatibilité UI) ---
+  Future<void> loginWithGoogle() async {
+    try {
+      final data = await AuthService.loginWithGoogle(); // activera plus tard
+      token = data["accessToken"];
+      refreshToken = data["refreshToken"];
+      user = data["user"];
+
+      final prefs = await SharedPreferences.getInstance();
+      if (token != null) await prefs.setString("token", token!);
+      if (refreshToken != null)
+        await prefs.setString("refreshToken", refreshToken!);
+      if (user != null) await prefs.setString("user", jsonEncode(user));
+
+      notifyListeners();
+    } catch (e) {
+      // Pour l’instant, on remonte l’erreur (bouton Google désactivé côté UI ou try/catch côté écran)
+      rethrow;
+    }
+  }
+
+  /// --- Inscription ---
+  Future<void> registerUser({
+    required String pseudo,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final data = await AuthService.register(pseudo, email, password);
+      token = data["accessToken"];
+      refreshToken = data["refreshToken"];
+      user = data["user"];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("token", token!);
+      await prefs.setString("refreshToken", refreshToken!);
+      await prefs.setString("user", jsonEncode(user));
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint("❌ Erreur inscription : $e");
+      rethrow;
+    }
   }
 }

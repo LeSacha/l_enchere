@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "223100115013",
+    "project_id": "lenchere-856cc",
+    "storage_bucket": "lenchere-856cc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:223100115013:android:b068e88ae26c3131f36b2c",
+        "android_client_info": {
+          "package_name": "com.example.l_enchere"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "223100115013-8hnja2nhelrkjcj4r8vbebgfs1t1o197.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.l_enchere",
+            "certificate_hash": "11caab1622cd2fce6e67c2ac5097a980c8bdd04a"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2tjI7FS9v2pLy7EktYu7EyyKsCRJd6Sg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "223100115013-3j8cehajlu8tfl420j2rt74aobqhj91v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.lEnchere"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

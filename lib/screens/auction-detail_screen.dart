@@ -6,11 +6,13 @@ import '../models/auction.dart';
 import '../providers/auction_provider.dart';
 import '../providers/user_provider.dart';
 import '../utils/time_utils.dart';
+import '../services/bid_service.dart';
 import 'dart:io';
 
 class AuctionDetailScreen extends StatefulWidget {
   static const routeName = '/detail';
   final Auction auction;
+
   const AuctionDetailScreen({Key? key, required this.auction})
     : super(key: key);
 
@@ -29,49 +31,56 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
     super.dispose();
   }
 
-  void _placeBid(Auction a) {
+  Future<void> _placeBid(Auction a) async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final currentUser = userProvider.currentUser;
+    final currentUser = userProvider.user;
+    final token = userProvider.token;
+
+    if (a.isExpired) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cette enchère est terminée')),
+      );
+      return;
+    }
 
     final amount = double.tryParse(_bidCtrl.text.replaceAll(',', '.')) ?? -1;
-
-    // Si user connecté, prend son pseudo automatiquement, sinon garde champ manuel
-    final bidder = currentUser != null
-        ? currentUser.pseudo
-        : (_nameCtrl.text.trim().isEmpty ? 'Anonyme' : _nameCtrl.text.trim());
-
-    final result = Provider.of<AuctionProvider>(
-      context,
-      listen: false,
-    ).placeBid(auctionId: a.id, amount: amount, bidder: bidder);
-
-    if (result == 'ok') {
-      _bidCtrl.clear();
-
-      // 🔑 Ajoute l'ID de l'enchère dans la liste des offres de l'utilisateur
-      if (currentUser != null) {
-        userProvider.addOffer(a.id);
-      }
-
+    if (amount <= a.currentPrice) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Enchère enregistrée')));
-    } else {
-      String msg = 'Erreur';
-      if (result == 'prix_trop_bas') {
-        msg = 'Le montant doit être supérieur au prix courant';
-      }
-      if (result == 'enchere_terminee') {
-        msg = 'Enchère déjà terminée';
-      }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ).showSnackBar(const SnackBar(content: Text('Montant trop bas')));
+      return;
+    }
+
+    try {
+      // Utilise le pseudo du compte connecté ou le nom saisi
+      final bidderName = currentUser != null
+          ? (currentUser["pseudo"] ?? currentUser["email"] ?? "Utilisateur")
+          : _nameCtrl.text;
+
+      await BidService.addOffer(
+        auctionId: a.id.toString(),
+        amount: amount,
+        token: token ?? '',
+      );
+
+      // Ajoute l'offre localement (optionnel selon backend)
+      Provider.of<AuctionProvider>(context, listen: false).refreshAuctions();
+
+      _bidCtrl.clear();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Offre placée par $bidderName !')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final priceFmt = NumberFormat.simpleCurrency(locale: 'fr_FR');
-    final currentUser = Provider.of<UserProvider>(context).currentUser;
+    final currentUser = Provider.of<UserProvider>(context).user;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Détail')),
@@ -108,7 +117,6 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                 fit: BoxFit.cover,
                               );
 
-                        // 👉 On enveloppe avec GestureDetector pour ouvrir en plein écran
                         return GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -128,7 +136,6 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
               Text(a.title, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
@@ -151,7 +158,6 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
               if (a.isExpired)
                 const Center(
                   child: Text(
@@ -162,9 +168,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                     ),
                   ),
                 ),
-
               if (!a.isExpired) ...[
-                // Si utilisateur connecté, on cache le champ "pseudo"
                 if (currentUser == null)
                   TextField(
                     controller: _nameCtrl,
@@ -187,7 +191,6 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                   child: const Text('Enchérir'),
                 ),
               ],
-
               const SizedBox(height: 20),
               const Text(
                 'Historique des offres',

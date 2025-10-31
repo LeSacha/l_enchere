@@ -63,10 +63,8 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
   String? _selectedCategory;
 
   final List<File> _selectedImages = [];
-
   final ImagePicker _picker = ImagePicker();
 
-  /// Sélection multiple depuis la galerie
   Future<void> _pickMultipleImages() async {
     final pickedFiles = await _picker.pickMultiImage(
       maxWidth: 800,
@@ -79,7 +77,6 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
     }
   }
 
-  /// Une photo depuis la caméra
   Future<void> _pickFromCamera() async {
     final pickedFile = await _picker.pickImage(
       source: ImageSource.camera,
@@ -103,29 +100,34 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
     }
 
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final currentUser = userProvider.currentUser;
+    final currentUser = userProvider.user;
 
     final id = const Uuid().v4();
     final starting =
         double.tryParse(_priceCtrl.text.replaceAll(',', '.')) ?? 0.0;
     final end = DateTime.now().add(Duration(hours: _hours));
 
+    final creatorName = currentUser != null
+        ? (currentUser["pseudo"] ?? currentUser["email"] ?? "Utilisateur")
+        : "Anonyme";
+
     final a = Auction(
       id: id,
       title: _titleCtrl.text.trim(),
       description: _descCtrl.text.trim(),
-      // ✅ on enregistre le chemin local de toutes les images
       imageUrls: _selectedImages.map((f) => f.path).toList(),
       endTime: end,
       startingPrice: starting,
-      creator: currentUser?.pseudo ?? "Anonyme",
+      creator: creatorName,
       category: _selectedCategory!,
     );
 
+    // Ajout local dans la liste
     Provider.of<AuctionProvider>(context, listen: false).addAuction(a);
 
+    // Stockage de l'enchère côté utilisateur (ajoute la méthode dans UserProvider)
     if (currentUser != null) {
-      userProvider.addAuction(id);
+      userProvider.addUserAuction(id);
     }
 
     Navigator.of(context).pop();
@@ -133,7 +135,7 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<UserProvider>(context).currentUser;
+    final user = Provider.of<UserProvider>(context).user;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Créer une enchère')),
